@@ -1,3 +1,4 @@
+#JAVIEL ALEXANDER HIDALGO
 # Clase para la espada
 class Sword(pygame.sprite.Sprite):
     def __init__(self, x, y, direction):

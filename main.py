@@ -1,3 +1,4 @@
+#JAVIEL ALEXANDER HIDALGO
 import pygame
 from pygame.locals import *
 import numpy as np
