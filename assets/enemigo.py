@@ -1,52 +1,84 @@
 #JAVIEL ALEXANDER HIDALGO
+#ESTA ES MI CLASE ENEMIGO
 import pygame
 import math
+import pygame
+import heapq
+import random
 
-class Enemigo(pygame.sprite.Sprite):
-    def __init__(self, x, y, imagen, velocidad=2, vida_max=100):
+class Enemy(pygame.sprite.Sprite):
+    def __init__(self, x, y, image, columnas, filas, tile_size):
         super().__init__()
-        self.imagen_original = pygame.image.load(imagen).convert_alpha()
-        self.image = pygame.transform.scale(self.imagen_original, (60, 60))
-        self.rect = self.image.get_rect(center=(x, y))
-        self.velocidad = velocidad
-        self.vida = vida_max
-        self.vida_max = vida_max
-        self.vivo = True
+        self.image = image
+        self.rect = self.image.get_rect(topleft=(x*tile_size, y*tile_size))
+        self.path = []
+        self.state = "patrullar"
+        self.patrulla_direccion = random.choice([(0,1),(1,0),(0,-1),(-1,0)])
+        self.columnas = columnas
+        self.filas = filas
+        self.tile_size = tile_size
 
-    def moverse_hacia(self, jugador_pos):
-        if not self.vivo:
-            return
-        dx, dy = jugador_pos[0] - self.rect.x, jugador_pos[1] - self.rect.y
-        distancia = math.hypot(dx, dy)
-        if distancia > 0:
-            dx, dy = dx / distancia, dy / distancia
-            self.rect.x += dx * self.velocidad
-            self.rect.y += dy * self.velocidad
+    def update(self, player_pos, mapa):
+        distancia = abs(player_pos[0] - self.rect.x // self.tile_size) + abs(player_pos[1] - self.rect.y // self.tile_size)
+        if distancia < 3:
+            self.state = "atacar"
+        elif distancia < 6:
+            self.state = "perseguir"
+        else:
+            self.state = "patrullar"
 
-    def recibir_daño(self, cantidad):
-        if self.vivo:
-            self.vida -= cantidad
-            self.actualizar_color()
-            if self.vida <= 0:
-                self.vivo = False
+        if self.state == "patrullar":
+            new_pos = (self.rect.x + self.patrulla_direccion[0]*self.tile_size,
+                       self.rect.y + self.patrulla_direccion[1]*self.tile_size)
+            tile_x, tile_y = new_pos[0]//self.tile_size, new_pos[1]//self.tile_size
+            if 0<=tile_x<self.columnas and 0<=tile_y<self.filas and mapa[tile_y][tile_x]==0:
+                self.rect.topleft = new_pos
+            else:
+                self.patrulla_direccion = random.choice([(0,1),(1,0),(0,-1),(-1,0)])
 
-    def actualizar_color(self):
-        # Cambia progresivamente a rojo
-        porcentaje = 1 - (self.vida / self.vida_max)
-        nueva_imagen = self.imagen_original.copy()
-        rojo = int(255 * porcentaje)
-        superficie_tintada = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
-        superficie_tintada.fill((rojo, 0, 0, 100))
-        nueva_imagen.blit(superficie_tintada, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
-        self.image = nueva_imagen
+        elif self.state == "perseguir":
+            if not self.path or (self.rect.x//self.tile_size,self.rect.y//self.tile_size)!=player_pos:
+                self.path = self.a_star((self.rect.x//self.tile_size,self.rect.y//self.tile_size), player_pos, mapa)
+            if self.path:
+                next_cell = self.path.pop(0)
+                self.rect.topleft = (next_cell[0]*self.tile_size,next_cell[1]*self.tile_size)
+        elif self.state == "atacar":
+            pass
 
-    def dibujar_barra_vida(self, pantalla):
-        if not self.vivo:
-            return
-        ancho_barra = 60
-        alto_barra = 6
-        x = self.rect.centerx - ancho_barra // 2
-        y = self.rect.top - 10
-        vida_actual = int((self.vida / self.vida_max) * ancho_barra)
-        pygame.draw.rect(pantalla, (255, 0, 0), (x, y, ancho_barra, alto_barra))
-        pygame.draw.rect(pantalla, (0, 255, 0), (x, y, vida_actual, alto_barra))
+    #Funciones A*
+    def a_star(self, start, goal, mapa):
+        directions = [(0,1),(1,0),(0,-1),(-1,0)]
+        rows, cols = len(mapa), len(mapa[0])
+        open_set = []
+        heapq.heappush(open_set,(0,start))
+        came_from = {}
+        g_score = {start:0}
+        f_score = {start:self.heuristic(start, goal)}
+
+        while open_set:
+            current = heapq.heappop(open_set)[1]
+            if current==goal:
+                return self.reconstruct_path(came_from,current)
+
+            for d in directions:
+                neighbor = (current[0]+d[0], current[1]+d[1])
+                if 0<=neighbor[0]<cols and 0<=neighbor[1]<rows and mapa[neighbor[1]][neighbor[0]]==0:
+                    tentative_g = g_score[current]+1
+                    if neighbor not in g_score or tentative_g<g_score[neighbor]:
+                        came_from[neighbor]=current
+                        g_score[neighbor]=tentative_g
+                        f_score[neighbor]=tentative_g+self.heuristic(neighbor, goal)
+                        heapq.heappush(open_set,(f_score[neighbor],neighbor))
+        return []
+
+    def heuristic(self,a,b):
+        return abs(a[0]-b[0])+abs(a[1]-b[1])
+
+    def reconstruct_path(self,came_from,current):
+        path=[]
+        while current in came_from:
+            path.append(current)
+            current = came_from[current]
+        path.reverse()
+        return path
+

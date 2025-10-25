@@ -1,45 +1,27 @@
 #JAVIEL ALEXANDER HIDALGO
-# Esta mi clase personaje
+# Esta es mi clase Personaje
 import pygame
+from sword import Sword
 
-class Personaje(pygame.sprite.Sprite):
-    def __init__(self, x, y, frames, velocidad=5):
-        super().__init__()
-        self.frames = [pygame.image.load(f).convert_alpha() for f in frames]
-        self.frame_index = 0
-        self.image = self.frames[self.frame_index]
-        self.rect = self.image.get_rect(topleft=(x, y))
-        self.velocidad = velocidad
+class Player:
+    def __init__(self, x, y, images, tile_size):
+        self.x = x
+        self.y = y
+        self.images = images
+        self.tile_size = tile_size
         self.direccion = 'derecha'
-        self.animacion_contador = 0
 
-    def mover(self, keys, mapa, columnas, filas, TILE_SIZE):
-        dx, dy = 0, 0
-        if keys[pygame.K_LEFT] and self.rect.x > 0 and mapa[self.rect.y // TILE_SIZE][(self.rect.x - self.velocidad) // TILE_SIZE] == 0:
-            dx = -self.velocidad
-            self.direccion = 'izquierda'
-        elif keys[pygame.K_RIGHT] and self.rect.x // TILE_SIZE < columnas - 1 and mapa[self.rect.y // TILE_SIZE][(self.rect.x + self.velocidad) // TILE_SIZE] == 0:
-            dx = self.velocidad
-            self.direccion = 'derecha'
-        elif keys[pygame.K_UP] and self.rect.y > 0 and mapa[(self.rect.y - self.velocidad) // TILE_SIZE][self.rect.x // TILE_SIZE] == 0:
-            dy = -self.velocidad
-            self.direccion = 'arriba'
-        elif keys[pygame.K_DOWN] and self.rect.y // TILE_SIZE < filas - 1 and mapa[(self.rect.y + self.velocidad) // TILE_SIZE][self.rect.x // TILE_SIZE] == 0:
-            dy = self.velocidad
-            self.direccion = 'abajo'
+    def mover(self, dx, dy, mapa):
+        nx, ny = self.x + dx, self.y + dy
+        if 0 <= nx < len(mapa[0]) and 0 <= ny < len(mapa) and mapa[ny][nx]==0:
+            self.x, self.y = nx, ny
 
-        self.rect.x += dx
-        self.rect.y += dy
+    def atacar(self, swords_group, sword_images):
+        sword = Sword(self.x*self.tile_size+self.tile_size//2,
+                      self.y*self.tile_size+self.tile_size//2,
+                      self.direccion, sword_images, self.tile_size)
+        swords_group.add(sword)
 
-    def animar(self):
-        self.animacion_contador += 1
-        if self.animacion_contador >= 5:
-            self.frame_index = (self.frame_index + 1) % len(self.frames)
-            self.image = self.frames[self.frame_index]
-            self.animacion_contador = 0
-
-    def disparar(self, swords_group):
-        from sword import Sword
-        espada = Sword(self.rect.centerx, self.rect.centery, self.direccion)
-        swords_group.add(espada)
-
+    def dibujar(self, screen):
+        img = self.images['derecha'] if self.direccion=='derecha' else self.images['izquierda']
+        screen.blit(img, (self.x*self.tile_size, self.y*self.tile_size))

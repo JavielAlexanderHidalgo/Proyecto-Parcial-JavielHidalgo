@@ -1,24 +1,25 @@
 #JAVIEL ALEXANDER HIDALGO
 # Clase para la espada
+import pygame
+
 class Sword(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y, direction, sword_images, tile_size):
         super().__init__()
-        # Cargar la imagen de la espada según la dirección
+        self.direction = direction
+        self.tile_size = tile_size
         if direction == 'derecha':
-            self.image = sword_right_image
+            self.image = sword_images['derecha']
         elif direction == 'izquierda':
-            self.image = sword_left_image
+            self.image = sword_images['izquierda']
         elif direction == 'arriba':
-            self.image = sword_up_image
+            self.image = sword_images['arriba']
         elif direction == 'abajo':
-            self.image = sword_down_image
+            self.image = sword_images['abajo']
 
         self.rect = self.image.get_rect(center=(x, y))
-        self.speed = 40  # Velocidad de la espada
-        self.direction = direction
+        self.speed = tile_size // 1.5
 
     def update(self, enemies, mapa):
-        # Mover la espada según la dirección
         new_x, new_y = self.rect.x, self.rect.y
         if self.direction == 'derecha':
             new_x += self.speed
@@ -29,34 +30,17 @@ class Sword(pygame.sprite.Sprite):
         elif self.direction == 'abajo':
             new_y += self.speed
 
-        # Convertir coordenadas a índices de matriz
-        tile_x = new_x // TILE_SIZE
-        tile_y = new_y // TILE_SIZE
+        tile_x = new_x // self.tile_size
+        tile_y = new_y // self.tile_size
 
-        # Comprobar colisión con paredes
-        if 0 <= tile_x < columnas and 0 <= tile_y < filas:
-            if mapa[tile_y][tile_x] == 1:
+        if 0<=tile_x<len(mapa[0]) and 0<=tile_y<len(mapa):
+            if mapa[tile_y][tile_x]==1:
                 self.kill()
                 return
+            self.rect.topleft = (new_x,new_y)
 
-            # Actualizar posición de la espada
-            self.rect.topleft = (new_x, new_y)
-
-            # Comprobar colisiones con enemigos
             for enemy in enemies:
                 if self.rect.colliderect(enemy.rect):
-                    # Reducir vida del enemigo y actualizar su color
-                    if hasattr(enemy, 'vida') and hasattr(enemy, 'vivo') and enemy.vivo:
-                        enemy.vida -= 85  # Ajusta el daño a tu gusto
-                        if enemy.vida <= 0:
-                            enemy.vivo = False
-                            enemy.kill()
-                        else:
-                            # Cambiar el color del enemigo progresivamente a rojo
-                            rojo = 255 - enemy.vida
-                            overlay = pygame.Surface(enemy.image.get_size(), pygame.SRCALPHA)
-                            overlay.fill((rojo, 0, 0, 100))
-                            enemy.image = enemy.image.copy()
-                            enemy.image.blit(overlay, (0, 0))
+                    enemy.kill()
                     self.kill()
                     break
